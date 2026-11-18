@@ -1,0 +1,30 @@
+{
+  "name": "ltc-discord-bot",
+  "version": "1.0.0",
+  "description": "Bot Discord JavaScript pour suivre le cours du Litecoin (LTC) avec graphiques dynamiques et statistiques",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "deploy": "node src/deploy-commands.js",
+    "test:services": "node src/test-services.js"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "litecoin",
+    "ltc",
+    "crypto",
+    "chart",
+    "tracker"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "discord.js": "^14.17.3",
+    "dotenv": "^16.4.7",
+    "quickchart-js": "^3.1.3"
+  }
+}
