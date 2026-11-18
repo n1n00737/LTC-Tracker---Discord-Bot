@@ -28,7 +28,6 @@ async function deploy() {
     console.log(`🚀 Starting registration of ${commands.length} slash commands...`);
 
     if (config.guildId) {
-      // Instant deployment to a specific guild
       console.log(`📌 Registering commands to Guild (Guild ID: ${config.guildId})...`);
       const data = await rest.put(
         Routes.applicationGuildCommands(config.clientId, config.guildId),
@@ -36,7 +35,6 @@ async function deploy() {
       );
       console.log(`✅ Successfully registered ${data.length} commands to guild!`);
     } else {
-      // Global deployment
       console.log(`🌐 Registering commands globally (all servers)...`);
       const data = await rest.put(
         Routes.applicationCommands(config.clientId),

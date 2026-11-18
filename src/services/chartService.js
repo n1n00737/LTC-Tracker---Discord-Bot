@@ -1,14 +1,8 @@
 import QuickChart from 'quickchart-js';
 import { AttachmentBuilder } from 'discord.js';
 
-/**
- * Generates a high-definition cryptocurrency chart using QuickChart
- * @param {Object} historyData Output from getLtcHistoricalPrices
- * @param {string} currency Currency symbol ('USD' or 'EUR')
- * @returns {Promise<{ attachment: AttachmentBuilder, filename: string, isBullish: boolean }>}
- */
 export async function generateLtcChart(historyData, currency = 'USD') {
-  const { labels, prices, min, max, startPrice, endPrice, changePercent, isBullish, timeframe } = historyData;
+  const { labels, prices, min, max, endPrice, changePercent, isBullish, timeframe } = historyData;
 
   const symbol = currency === 'EUR' ? '€' : '$';
   const lineColor = isBullish ? '#00F59B' : '#FF495C';
@@ -24,14 +18,12 @@ export async function generateLtcChart(historyData, currency = 'USD') {
   const chart = new QuickChart();
   chart.setWidth(900);
   chart.setHeight(440);
-  chart.setBackgroundColor('#0E121B'); // TradingView-style dark theme
+  chart.setBackgroundColor('#0E121B');
   chart.setDevicePixelRatio(2.0);
 
-  // Even sampling of horizontal labels
   const step = Math.ceil(labels.length / 8);
   const formattedLabels = labels.map((l, index) => (index % step === 0 || index === labels.length - 1 ? l : ''));
 
-  // Highlight start and end points
   const pointRadiuses = prices.map((_, i) => (i === 0 || i === prices.length - 1 ? 5 : 0));
   const pointBgColors = prices.map((_, i) => (i === 0 || i === prices.length - 1 ? '#FFFFFF' : lineColor));
 

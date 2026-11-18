@@ -10,18 +10,15 @@ const __dirname = path.dirname(__filename);
 const DATA_DIR = path.join(__dirname, '..', '..', 'data');
 const ALERTS_FILE = path.join(DATA_DIR, 'alerts.json');
 
-// Ensure data folder exists
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Initial structure
 let alertsDb = {
-  signalSubscribers: {}, // { userId: { channelId, guildId, enabled: true, lastAlertTimestamp: 0, lastSignal: null } }
-  priceAlerts: [] // [ { id, userId, channelId, targetPrice, condition: 'above'|'below', currency: 'USD'|'EUR', createdAt } ]
+  signalSubscribers: {},
+  priceAlerts: []
 };
 
-// Load database from disk
 try {
   if (fs.existsSync(ALERTS_FILE)) {
     const raw = fs.readFileSync(ALERTS_FILE, 'utf-8');
@@ -43,9 +40,6 @@ function saveDb() {
   }
 }
 
-/**
- * Toggles or sets signal notification subscription for a user
- */
 export function toggleSignalAlert(userId, channelId, guildId, forceState = null) {
   const current = alertsDb.signalSubscribers[userId];
   const newState = forceState !== null ? forceState : !current?.enabled;
@@ -68,9 +62,6 @@ export function toggleSignalAlert(userId, channelId, guildId, forceState = null)
   return newState;
 }
 
-/**
- * Adds a custom price alert for a user
- */
 export function addPriceAlert(userId, channelId, targetPrice, condition = 'above', currency = 'USD') {
   const id = `alert_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
   const alert = {
@@ -78,7 +69,7 @@ export function addPriceAlert(userId, channelId, targetPrice, condition = 'above
     userId,
     channelId,
     targetPrice: parseFloat(targetPrice),
-    condition, // 'above' or 'below'
+    condition,
     currency: currency.toUpperCase(),
     createdAt: new Date().toISOString()
   };
@@ -88,9 +79,6 @@ export function addPriceAlert(userId, channelId, targetPrice, condition = 'above
   return alert;
 }
 
-/**
- * Retrieves all alerts for a specific user
- */
 export function getUserAlerts(userId) {
   const isSignalEnabled = !!alertsDb.signalSubscribers[userId]?.enabled;
   const userPriceAlerts = alertsDb.priceAlerts.filter((a) => a.userId === userId);
@@ -102,9 +90,6 @@ export function getUserAlerts(userId) {
   };
 }
 
-/**
- * Clears all alerts for a user
- */
 export function clearUserAlerts(userId) {
   if (alertsDb.signalSubscribers[userId]) {
     delete alertsDb.signalSubscribers[userId];
@@ -115,9 +100,6 @@ export function clearUserAlerts(userId) {
   return beforeCount - alertsDb.priceAlerts.length;
 }
 
-/**
- * Checks signal triggers and price targets, then dispatches Discord mentions
- */
 export async function checkAndDispatchAlerts(client) {
   try {
     const [signals, marketData] = await Promise.all([
@@ -126,14 +108,12 @@ export async function checkAndDispatchAlerts(client) {
     ]);
 
     const now = Date.now();
-    const SIGNAL_COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2 hours cooldown between notifications of the same signal type
+    const SIGNAL_COOLDOWN_MS = 2 * 60 * 60 * 1000;
 
-    // 1. Process Signal Subscribers (Buy & Sell Mentions)
     if (signals.actionType === 'STRONG_BUY' || signals.actionType === 'BUY' || signals.actionType === 'STRONG_SELL' || signals.actionType === 'SELL') {
       for (const [userId, sub] of Object.entries(alertsDb.signalSubscribers)) {
         if (!sub.enabled) continue;
 
-        // Check if cooldown passed or signal direction inverted
         const timePassed = now - (sub.lastAlertTimestamp || 0) > SIGNAL_COOLDOWN_MS;
         const signalChanged = sub.lastSignal !== signals.actionType;
 
@@ -191,7 +171,6 @@ export async function checkAndDispatchAlerts(client) {
       }
     }
 
-    // 2. Process Custom Price Alerts
     const remainingPriceAlerts = [];
     for (const alert of alertsDb.priceAlerts) {
       const currentPrice = alert.currency === 'EUR' ? marketData.price.eur : marketData.price.usd;
@@ -232,7 +211,6 @@ export async function checkAndDispatchAlerts(client) {
       }
     }
 
-    // Save remaining (untriggered) price alerts
     if (remainingPriceAlerts.length !== alertsDb.priceAlerts.length) {
       alertsDb.priceAlerts = remainingPriceAlerts;
       saveDb();

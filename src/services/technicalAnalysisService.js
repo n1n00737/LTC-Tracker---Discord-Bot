@@ -1,18 +1,11 @@
 import axios from 'axios';
 
-/**
- * Calculates the Relative Strength Index (RSI) for a series of closing prices
- * @param {number[]} prices Array of historical closing prices
- * @param {number} period RSI period (default: 14)
- * @returns {number} Current RSI value (0 to 100)
- */
 export function calculateRSI(prices, period = 14) {
   if (prices.length < period + 1) return 50;
 
   let gains = 0;
   let losses = 0;
 
-  // First period average gain/loss
   for (let i = 1; i <= period; i++) {
     const diff = prices[i] - prices[i - 1];
     if (diff >= 0) {
@@ -25,7 +18,6 @@ export function calculateRSI(prices, period = 14) {
   let avgGain = gains / period;
   let avgLoss = losses / period;
 
-  // Smoothed averages for subsequent prices
   for (let i = period + 1; i < prices.length; i++) {
     const diff = prices[i] - prices[i - 1];
     if (diff >= 0) {
@@ -42,9 +34,6 @@ export function calculateRSI(prices, period = 14) {
   return 100 - (100 / (1 + rs));
 }
 
-/**
- * Calculates Exponential Moving Average (EMA)
- */
 export function calculateEMA(prices, period) {
   if (prices.length < period) return prices[prices.length - 1];
   const k = 2 / (period + 1);
@@ -56,13 +45,8 @@ export function calculateEMA(prices, period) {
   return ema;
 }
 
-/**
- * Analyzes market data to determine the optimal Buy / Sell signals and recommendations
- * @returns {Promise<Object>} Technical indicators and overall recommendation
- */
 export async function getTradingSignals() {
   try {
-    // Fetch 1h klines from Binance (100 candles = ~4 days of data)
     const response = await axios.get(
       'https://api.binance.com/api/v3/klines?symbol=LTCUSDT&interval=1h&limit=100',
       { timeout: 8000 }
@@ -78,7 +62,6 @@ export async function getTradingSignals() {
     const ema20 = calculateEMA(closes, 20);
     const ema50 = calculateEMA(closes, 50);
 
-    // Support and Resistance calculation (Pivot Points based on recent 24 periods)
     const recentHigh = Math.max(...highs.slice(-24));
     const recentLow = Math.min(...lows.slice(-24));
     const pivot = (recentHigh + recentLow + currentPrice) / 3;
@@ -87,11 +70,9 @@ export async function getTradingSignals() {
     const resistance2 = pivot + (recentHigh - recentLow);
     const support2 = pivot - (recentHigh - recentLow);
 
-    // Signal scoring (-3 to +3)
     let score = 0;
     let rsiStatus = 'Neutral';
 
-    // RSI analysis
     if (rsi <= 30) {
       score += 2;
       rsiStatus = 'Oversold (Survente - Strong Buy Zone)';
@@ -106,7 +87,6 @@ export async function getTradingSignals() {
       rsiStatus = 'Distribution Zone (Take Profit)';
     }
 
-    // Trend analysis (EMA 20 vs EMA 50)
     let trend = 'Neutral';
     if (currentPrice > ema20 && ema20 > ema50) {
       score += 1;
@@ -118,12 +98,11 @@ export async function getTradingSignals() {
       trend = 'Consolidation / Range 🟡';
     }
 
-    // Determine final signal
     let signal = 'HOLD';
     let signalEmoji = '🟡';
     let advice = 'The market is currently consolidating. Wait for clearer volume or a breakout confirmation.';
-    let color = 0xF5A623; // Yellow
-    let actionType = 'NEUTRAL'; // 'BUY', 'SELL', 'NEUTRAL'
+    let color = 0xF5A623;
+    let actionType = 'NEUTRAL';
 
     if (score >= 2) {
       signal = 'STRONG BUY';
@@ -151,10 +130,9 @@ export async function getTradingSignals() {
       actionType = 'SELL';
     }
 
-    // Target profit and stop-loss projections
-    const stopLoss = (currentPrice * 0.96).toFixed(2); // -4%
-    const targetTakeProfit1 = (currentPrice * 1.05).toFixed(2); // +5%
-    const targetTakeProfit2 = (currentPrice * 1.10).toFixed(2); // +10%
+    const stopLoss = (currentPrice * 0.96).toFixed(2);
+    const targetTakeProfit1 = (currentPrice * 1.05).toFixed(2);
+    const targetTakeProfit2 = (currentPrice * 1.10).toFixed(2);
 
     return {
       currentPrice,

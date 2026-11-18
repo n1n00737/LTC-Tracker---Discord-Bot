@@ -8,33 +8,18 @@ import {
 import { config } from '../config.js';
 import { buildLtcMessage, registerPermanentLiveTracker } from '../commands/ltc.js';
 
-/**
- * Handles owner-only prefix commands
- * @param {import('discord.js').Message} message
- * @param {import('discord.js').Client} client
- */
 export async function handleOwnerCommand(message, client) {
-  // Ignore bot messages
   if (message.author.bot) return;
 
   const prefix = config.prefix || '!';
 
-  // Check prefix
   if (!message.content.startsWith(prefix)) return;
-
-  // Strict check: Only the OWNER can use prefix commands
-  if (message.author.id !== config.ownerId) {
-    // Silently ignore or return
-    return;
-  }
+  if (message.author.id !== config.ownerId) return;
 
   const args = message.content.slice(prefix.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
   try {
-    // ==========================================
-    // 1. COMMANDE : !rules / !reglement
-    // ==========================================
     if (command === 'rules' || command === 'reglement' || command === 'règlement') {
       await message.delete().catch(() => {});
 
@@ -101,9 +86,6 @@ export async function handleOwnerCommand(message, client) {
       return;
     }
 
-    // ==========================================
-    // 2. COMMANDE : !say <texte> / !dire
-    // ==========================================
     if (command === 'say' || command === 'dire') {
       const text = args.join(' ');
       if (!text) {
@@ -117,9 +99,6 @@ export async function handleOwnerCommand(message, client) {
       return;
     }
 
-    // ==========================================
-    // 3. COMMANDE : !embed <titre> | <description> | [couleur]
-    // ==========================================
     if (command === 'embed') {
       const fullText = args.join(' ');
       const parts = fullText.split('|').map((p) => p.trim());
@@ -149,9 +128,6 @@ export async function handleOwnerCommand(message, client) {
       return;
     }
 
-    // ==========================================
-    // 4. COMMANDE : !announce <#salon> <message>
-    // ==========================================
     if (command === 'announce' || command === 'annonce') {
       const targetChannel = message.mentions.channels.first();
       if (!targetChannel) {
@@ -183,19 +159,14 @@ export async function handleOwnerCommand(message, client) {
       return;
     }
 
-    // ==========================================
-    // 5. COMMANDE : !ltc-live [#salon]
-    // ==========================================
     if (command === 'ltc-live' || command === 'post-tracker') {
       let targetChannel = message.mentions.channels.first() || message.channel;
 
       await message.delete().catch(() => {});
 
-      // Build initial message strictly without buttons (Embed only)
       const initialPayload = await buildLtcMessage('24h', config.defaultCurrency, false);
       const sentMessage = await targetChannel.send(initialPayload);
 
-      // Start permanent auto-refresh on this message without buttons
       registerPermanentLiveTracker(sentMessage, '24h', config.defaultCurrency, false);
 
       const confirm = await message.channel.send(`✅ Tracker live permanent LTC (Embed pur sans boutons) déployé dans <#${targetChannel.id}> !`);
@@ -203,9 +174,6 @@ export async function handleOwnerCommand(message, client) {
       return;
     }
 
-    // ==========================================
-    // 6. COMMANDE : !clear <nombre> / !purge
-    // ==========================================
     if (command === 'clear' || command === 'purge') {
       const count = parseInt(args[0], 10);
       if (isNaN(count) || count < 1 || count > 100) {
@@ -226,9 +194,6 @@ export async function handleOwnerCommand(message, client) {
       return;
     }
 
-    // ==========================================
-    // 7. COMMANDE : !botstats / !status
-    // ==========================================
     if (command === 'botstats' || command === 'status' || command === 'stats') {
       const uptimeSec = Math.floor(process.uptime());
       const hours = Math.floor(uptimeSec / 3600);
@@ -254,9 +219,6 @@ export async function handleOwnerCommand(message, client) {
       return;
     }
 
-    // ==========================================
-    // 8. COMMANDE : !ownerhelp / !admin
-    // ==========================================
     if (command === 'ownerhelp' || command === 'admin' || command === 'adminhelp') {
       const embed = new EmbedBuilder()
         .setTitle('👑 Commandes Exclusives Owner')

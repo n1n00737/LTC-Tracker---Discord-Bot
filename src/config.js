@@ -9,7 +9,6 @@ export const config = {
   defaultCurrency: (process.env.DEFAULT_CURRENCY || 'USD').toUpperCase(),
   statusUpdateInterval: Math.max(30, parseInt(process.env.STATUS_UPDATE_INTERVAL, 10) || 60),
   
-  // Couleurs de la charte graphique Litecoin & Crypto
   colors: {
     litecoinBlue: 0x345D9D,
     litecoinSilver: 0xA6A9AA,
@@ -19,7 +18,6 @@ export const config = {
     gold: 0xF1C40F
   },
   
-  // Emojis d'état
   emojis: {
     ltc: '🪙',
     up: '📈',

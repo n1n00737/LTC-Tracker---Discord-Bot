@@ -8,6 +8,13 @@ import {
 import { getLtcMarketData, getLtcHistoricalPrices } from '../services/cryptoService.js';
 import { generateLtcChart } from '../services/chartService.js';
 import { config } from '../config.js';
+import {
+  registerPermanentLiveTracker,
+  activeLiveTrackers,
+  restoreLiveTrackers
+} from '../services/liveTrackerService.js';
+
+export { registerPermanentLiveTracker, activeLiveTrackers, restoreLiveTrackers };
 
 export const data = new SlashCommandBuilder()
   .setName('ltc')
@@ -35,9 +42,6 @@ export const data = new SlashCommandBuilder()
       )
   );
 
-/**
- * Creates a visual range bar for the 24h low/high position
- */
 function createRangeBar(current, low, high, length = 14) {
   if (high <= low) return '──●───────────';
   const ratio = Math.max(0, Math.min(1, (current - low) / (high - low)));
@@ -47,22 +51,8 @@ function createRangeBar(current, low, high, length = 14) {
   return chars.join('');
 }
 
-import {
-  registerPermanentLiveTracker,
-  activeLiveTrackers,
-  restoreLiveTrackers
-} from '../services/liveTrackerService.js';
+const REFRESH_INTERVAL_SECONDS = 30;
 
-export { registerPermanentLiveTracker, activeLiveTrackers, restoreLiveTrackers };
-
-const REFRESH_INTERVAL_SECONDS = 30; // Updates every 30 seconds
-
-/**
- * Builds the premium LTC embed and optional interactive components
- * @param {string} timeframe
- * @param {string} currency
- * @param {boolean} withButtons If false, only the embed is returned without action buttons
- */
 export async function buildLtcMessage(timeframe = '24h', currency = 'USD', withButtons = true) {
   const [marketData, historyData] = await Promise.all([
     getLtcMarketData(),
@@ -83,14 +73,8 @@ export async function buildLtcMessage(timeframe = '24h', currency = 'USD', withB
     num.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
   const embedColor = isUp ? 0x00E676 : 0xFF3B30;
-
-  // 24h range bar
   const rangeBar = createRangeBar(price, marketData.stats24h.low, marketData.stats24h.high);
-
-  // Mined supply percentage (Circulating supply / 84M)
   const supplyPercent = ((marketData.extra.circulatingSupply / 84_000_000) * 100).toFixed(1);
-
-  // Dynamic next refresh countdown timestamp
   const nextRefreshUnix = Math.floor((Date.now() + REFRESH_INTERVAL_SECONDS * 1000) / 1000);
 
   const embed = new EmbedBuilder()
@@ -143,7 +127,6 @@ export async function buildLtcMessage(timeframe = '24h', currency = 'USD', withB
     })
     .setTimestamp(marketData.timestamp);
 
-  // If buttons are disabled (e.g. for !ltc-live)
   if (!withButtons) {
     return {
       embeds: [embed],
@@ -152,7 +135,6 @@ export async function buildLtcMessage(timeframe = '24h', currency = 'USD', withB
     };
   }
 
-  // Row 1: Timeframe buttons
   const timeframeRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`tf_24h_${currency}`)
@@ -176,7 +158,6 @@ export async function buildLtcMessage(timeframe = '24h', currency = 'USD', withB
       .setStyle(timeframe === '1y' ? ButtonStyle.Primary : ButtonStyle.Secondary)
   );
 
-  // Row 2: Actions (Refresh, Signals, Switch Currency, Links)
   const nextCurrency = currency === 'USD' ? 'EUR' : 'USD';
   const nextCurrEmoji = currency === 'USD' ? '💶' : '💵';
   
@@ -210,7 +191,6 @@ export async function buildLtcMessage(timeframe = '24h', currency = 'USD', withB
   };
 }
 
-
 export async function execute(interaction) {
   await interaction.deferReply();
 
@@ -221,7 +201,6 @@ export async function execute(interaction) {
     const messagePayload = await buildLtcMessage(timeframe, currency, true);
     const replyResponse = await interaction.editReply(messagePayload);
 
-    // Fetch the underlying Message object for permanent updates
     const message = await interaction.fetchReply().catch(() => replyResponse);
     if (message) {
       registerPermanentLiveTracker(message, timeframe, currency, true);

@@ -18,14 +18,12 @@ import { toggleSignalAlert } from './services/alertService.js';
 import { handleOwnerCommand } from './ownerCommands/index.js';
 import { startStatusTracker } from './tracker.js';
 
-// Configuration check
 if (!config.discordToken) {
   console.error('\n❌ ERROR: Discord bot token not found!');
   console.error('👉 Please open .env and provide your DISCORD_TOKEN.\n');
   process.exit(1);
 }
 
-// Initialize Discord Client with message and guild intents
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -34,7 +32,6 @@ const client = new Client({
   ]
 });
 
-// Command Collection
 client.commands = new Collection();
 const commandModules = [ltcCmd, chartCmd, convertCmd, signalCmd, alertCmd, helpCmd];
 
@@ -44,7 +41,6 @@ for (const module of commandModules) {
   }
 }
 
-// Event: Client Ready
 client.once(Events.ClientReady, async (readyClient) => {
   console.log('----------------------------------------------------');
   console.log(`🤖 LTC Discord Bot connected as: ${readyClient.user.tag}`);
@@ -54,21 +50,15 @@ client.once(Events.ClientReady, async (readyClient) => {
   console.log(`⏱️ Status update interval: ${config.statusUpdateInterval}s`);
   console.log('----------------------------------------------------');
 
-  // Start presence and alert checking loop
   startStatusTracker(client);
-
-  // Restore and resume all permanent live LTC trackers across restarts
   await restoreLiveTrackers(client);
 });
 
-// Event: Owner Prefix Messages Handling
 client.on(Events.MessageCreate, async (message) => {
   await handleOwnerCommand(message, client);
 });
 
-// Event: Interaction Handling (Slash Commands & Buttons)
 client.on(Events.InteractionCreate, async (interaction) => {
-  // 1. Handle Slash Commands
   if (interaction.isChatInputCommand()) {
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
@@ -90,12 +80,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     return;
   }
 
-  // 2. Handle Interactive Buttons
   if (interaction.isButton()) {
     const customId = interaction.customId;
 
     try {
-      // Button: Rules Acceptance
       if (customId === 'rules_understood') {
         await interaction.reply({
           content: `✅ Thank you <@${interaction.user.id}>! You have read and agreed to the server rules. Welcome to the community! 🎉`,
@@ -104,7 +92,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
 
-      // Button: View Buy/Sell Signals from /ltc
       if (customId === 'btn_view_signals') {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const signalPayload = await buildSignalMessage(interaction.user.id, interaction.channelId);
@@ -112,11 +99,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
 
-      // Button: Toggle Signal Alerts Subscription
       if (customId.startsWith('toggle_signal_alert_')) {
         const newState = toggleSignalAlert(interaction.user.id, interaction.channelId, interaction.guildId);
-
-        // Update the signal message view
         const updatedSignalPayload = await buildSignalMessage(interaction.user.id, interaction.channelId);
         await interaction.update(updatedSignalPayload);
 
@@ -129,7 +113,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
 
-      // Button: Refresh Signal View
       if (customId === 'refresh_signal_view') {
         await interaction.deferUpdate();
         const updatedSignalPayload = await buildSignalMessage(interaction.user.id, interaction.channelId);
@@ -137,23 +120,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
 
-      // Timeframe buttons: "tf_24h_USD", "tf_7d_EUR", etc.
       if (customId.startsWith('tf_')) {
         await interaction.deferUpdate();
         const parts = customId.split('_');
-        const timeframe = parts[1]; // '24h', '7d', '30d', '1y'
+        const timeframe = parts[1];
         const currency = parts[2] || 'USD';
 
         const updatedPayload = await buildLtcMessage(timeframe, currency);
         await interaction.editReply(updatedPayload);
 
-        // Ensure permanent live refresh continues on the message
         if (interaction.message) {
           registerPermanentLiveTracker(interaction.message, timeframe, currency);
         }
-      }
-      // Refresh button: "refresh_24h_USD"
-      else if (customId.startsWith('refresh_')) {
+      } else if (customId.startsWith('refresh_')) {
         await interaction.deferUpdate();
         const parts = customId.split('_');
         const timeframe = parts[1] || '24h';
@@ -162,13 +141,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const updatedPayload = await buildLtcMessage(timeframe, currency);
         await interaction.editReply(updatedPayload);
 
-        // Restart permanent timer on the message
         if (interaction.message) {
           registerPermanentLiveTracker(interaction.message, timeframe, currency);
         }
-      }
-      // Currency toggle button: "curr_24h_EUR"
-      else if (customId.startsWith('curr_')) {
+      } else if (customId.startsWith('curr_')) {
         await interaction.deferUpdate();
         const parts = customId.split('_');
         const timeframe = parts[1] || '24h';
@@ -177,7 +153,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const updatedPayload = await buildLtcMessage(timeframe, currency);
         await interaction.editReply(updatedPayload);
 
-        // Continue permanent live tracker with new currency
         if (interaction.message) {
           registerPermanentLiveTracker(interaction.message, timeframe, currency);
         }
@@ -194,7 +169,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-// Log in to Discord
 client.login(config.discordToken).catch((err) => {
   console.error('❌ Failed to connect to Discord:', err.message);
   console.error('👉 Please verify your DISCORD_TOKEN in the .env file.');

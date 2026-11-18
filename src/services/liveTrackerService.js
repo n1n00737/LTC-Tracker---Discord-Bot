@@ -8,21 +8,13 @@ const __dirname = path.dirname(__filename);
 const DATA_DIR = path.join(__dirname, '..', '..', 'data');
 const TRACKERS_FILE = path.join(DATA_DIR, 'liveTrackers.json');
 
-// Ensure data folder exists
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// In-memory registry for active timer loops
-// Key: messageId -> Value: { timer, timeframe, currency, withButtons, message }
 export const activeLiveTrackers = new Map();
+export const REFRESH_INTERVAL_SECONDS = 30;
 
-export const REFRESH_INTERVAL_SECONDS = 30; // Updates every 30 seconds
-
-/**
- * Loads all saved trackers from disk
- * @returns {Record<string, { messageId: string, channelId: string, guildId?: string, timeframe: string, currency: string, withButtons: boolean, createdAt?: string, updatedAt?: string }>}
- */
 function loadTrackersDb() {
   try {
     if (fs.existsSync(TRACKERS_FILE)) {
@@ -35,10 +27,6 @@ function loadTrackersDb() {
   return {};
 }
 
-/**
- * Saves tracker map to disk
- * @param {Record<string, any>} db
- */
 function saveTrackersDb(db) {
   try {
     fs.writeFileSync(TRACKERS_FILE, JSON.stringify(db, null, 2));
@@ -47,9 +35,6 @@ function saveTrackersDb(db) {
   }
 }
 
-/**
- * Saves or updates a live tracker entry in persistent storage
- */
 export function saveLiveTracker(tracker) {
   if (!tracker || !tracker.messageId) return;
   const db = loadTrackersDb();
@@ -66,9 +51,6 @@ export function saveLiveTracker(tracker) {
   saveTrackersDb(db);
 }
 
-/**
- * Removes a tracker from persistent storage and stops its timer
- */
 export function removeLiveTracker(messageId) {
   if (!messageId) return;
   if (activeLiveTrackers.has(messageId)) {
@@ -84,20 +66,12 @@ export function removeLiveTracker(messageId) {
   }
 }
 
-/**
- * Registers and permanently runs an auto-refresh loop on a Discord Message object
- * @param {import('discord.js').Message} message
- * @param {string} timeframe
- * @param {string} currency
- * @param {boolean} withButtons
- */
 export function registerPermanentLiveTracker(message, timeframe = '24h', currency = 'USD', withButtons = true) {
   if (!message || !message.id) return;
   const messageId = message.id;
   const channelId = message.channelId || message.channel?.id;
   const guildId = message.guildId || message.guild?.id || null;
 
-  // Persist to database file
   saveLiveTracker({
     messageId,
     channelId,
@@ -107,7 +81,6 @@ export function registerPermanentLiveTracker(message, timeframe = '24h', currenc
     withButtons
   });
 
-  // If a tracker already exists for this message, clear previous interval
   if (activeLiveTrackers.has(messageId)) {
     const existing = activeLiveTrackers.get(messageId);
     if (existing.timer) clearInterval(existing.timer);
@@ -119,7 +92,6 @@ export function registerPermanentLiveTracker(message, timeframe = '24h', currenc
       const payload = await buildLtcMessage(timeframe, currency, withButtons);
       await message.edit(payload);
     } catch (err) {
-      // If message (10008) or channel (10003) is deleted or not found (404), stop & purge tracker
       if (err.code === 10008 || err.code === 10003 || err.status === 404) {
         console.log(`[LiveTracker] Message or channel deleted (${messageId}), removing tracker.`);
         removeLiveTracker(messageId);
@@ -132,10 +104,6 @@ export function registerPermanentLiveTracker(message, timeframe = '24h', currenc
   activeLiveTrackers.set(messageId, { timer, timeframe, currency, withButtons, message });
 }
 
-/**
- * Restores all saved live trackers after a bot restart and forces an immediate fresh update
- * @param {import('discord.js').Client} client
- */
 export async function restoreLiveTrackers(client) {
   const db = loadTrackersDb();
   const trackerIds = Object.keys(db);
@@ -169,7 +137,6 @@ export async function restoreLiveTrackers(client) {
         continue;
       }
 
-      // Perform an immediate refresh on startup so the message is up-to-date right away
       try {
         const payload = await buildLtcMessage(item.timeframe || '24h', item.currency || 'USD', item.withButtons ?? false);
         await message.edit(payload);
@@ -177,7 +144,6 @@ export async function restoreLiveTrackers(client) {
         console.warn(`[LiveTracker] Initial refresh error on ${messageId}:`, refreshErr.message);
       }
 
-      // Start the permanent live interval
       registerPermanentLiveTracker(
         message,
         item.timeframe || '24h',

@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// In-memory cache to limit redundant API requests
 const cache = {
   priceData: null,
   priceDataTimestamp: 0,
@@ -9,12 +8,9 @@ const cache = {
   coingeckoTimestamp: 0
 };
 
-const CACHE_DURATION_MS = 15000; // 15 seconds
-const COINGECKO_CACHE_MS = 120000; // 2 minutes
+const CACHE_DURATION_MS = 15000;
+const COINGECKO_CACHE_MS = 120000;
 
-/**
- * Fetches detailed Litecoin (LTC) market data from Binance and CoinGecko
- */
 export async function getLtcMarketData() {
   const now = Date.now();
   if (cache.priceData && now - cache.priceDataTimestamp < CACHE_DURATION_MS) {
@@ -22,7 +18,6 @@ export async function getLtcMarketData() {
   }
 
   try {
-    // 1. Binance ticker for real-time prices and 24h metrics
     const [tickerUsdtRes, tickerEurRes, tickerBtcRes] = await Promise.allSettled([
       axios.get('https://api.binance.com/api/v3/ticker/24hr?symbol=LTCUSDT', { timeout: 5000 }),
       axios.get('https://api.binance.com/api/v3/ticker/24hr?symbol=LTCEUR', { timeout: 5000 }),
@@ -38,7 +33,7 @@ export async function getLtcMarketData() {
     }
 
     const priceUsd = parseFloat(usdtData.lastPrice);
-    const priceEur = eurData ? parseFloat(eurData.lastPrice) : priceUsd * 0.92; // fallback estimate if EUR unavailable
+    const priceEur = eurData ? parseFloat(eurData.lastPrice) : priceUsd * 0.92;
     const priceBtc = btcData ? parseFloat(btcData.lastPrice) : null;
 
     const change24hPercent = parseFloat(usdtData.priceChangePercent);
@@ -48,7 +43,6 @@ export async function getLtcMarketData() {
     const volume24hLtc = parseFloat(usdtData.volume);
     const volume24hUsd = parseFloat(usdtData.quoteVolume);
 
-    // 2. CoinGecko for extra data (ATH, Rank, Market Cap, 7d/30d changes)
     let extraData = await getCoinGeckoExtraData();
 
     const data = {
@@ -79,9 +73,6 @@ export async function getLtcMarketData() {
   }
 }
 
-/**
- * Fetches additional market stats from CoinGecko (ATH, Market Cap, Rank)
- */
 async function getCoinGeckoExtraData() {
   const now = Date.now();
   if (cache.coingeckoData && now - cache.coingeckoTimestamp < COINGECKO_CACHE_MS) {
@@ -129,9 +120,6 @@ async function getCoinGeckoExtraData() {
   }
 }
 
-/**
- * CoinGecko full fallback if Binance API fails
- */
 async function getCoinGeckoFallbackData() {
   try {
     const res = await axios.get(
@@ -179,10 +167,6 @@ async function getCoinGeckoFallbackData() {
   }
 }
 
-/**
- * Fetches historical candle data for charts
- * @param {'24h'|'7d'|'30d'|'1y'} timeframe
- */
 export async function getLtcHistoricalPrices(timeframe = '24h') {
   const cacheKey = `history_${timeframe}`;
   const now = Date.now();
@@ -191,7 +175,7 @@ export async function getLtcHistoricalPrices(timeframe = '24h') {
   }
 
   let interval = '15m';
-  let limit = 96; // 96 * 15m = 24h
+  let limit = 96;
   let timeFormat = 'time';
 
   if (timeframe === '24h') {
@@ -200,15 +184,15 @@ export async function getLtcHistoricalPrices(timeframe = '24h') {
     timeFormat = 'time';
   } else if (timeframe === '7d') {
     interval = '2h';
-    limit = 84; // 84 * 2h = 7 days
+    limit = 84;
     timeFormat = 'day_time';
   } else if (timeframe === '30d') {
     interval = '8h';
-    limit = 90; // 90 * 8h = 30 days
+    limit = 90;
     timeFormat = 'date';
   } else if (timeframe === '1y') {
     interval = '3d';
-    limit = 122; // 122 * 3d ~ 1 year
+    limit = 122;
     timeFormat = 'month_year';
   }
 

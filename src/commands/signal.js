@@ -22,7 +22,6 @@ export async function buildSignalMessage(userId, channelId) {
   const userAlerts = getUserAlerts(userId);
   const isSubscribed = userAlerts.isSignalEnabled;
 
-  // Build RSI visual progress bar (0 to 100)
   const rsiValue = signals.rsi;
   const barLength = 16;
   const rsiPos = Math.min(barLength - 1, Math.max(0, Math.round((rsiValue / 100) * (barLength - 1))));
@@ -76,7 +75,6 @@ export async function buildSignalMessage(userId, channelId) {
     })
     .setTimestamp();
 
-  // Action Buttons
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`toggle_signal_alert_${userId}`)
